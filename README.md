@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)  
 [![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen?logo=github)](https://github.com/)  
 
-> Autor: **Ariel – Técnico Universitario en Programación (UTN)**  
+> Autores: **Ariel & Bautista – Técnico Universitario en Programación (UTN)**  
 > Proyecto desarrollado en conjunto con el ecosistema **FilmTribe** (API principal en Node.js).
 
 ---
