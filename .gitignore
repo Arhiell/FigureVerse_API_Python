@@ -1,0 +1,19 @@
+# Ignorar archivos de entorno y cachés
+.env
+*.env
+__pycache__/
+.DS_Store
+*.pyc
+
+# Entornos virtuales y herramientas
+venv/
+.venv/
+env/
+.envs/
+.pytest_cache/
+.mypy_cache/
+.vscode/
+.idea/
+
+# Base de datos local
+db.sqlite3
