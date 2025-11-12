@@ -1,19 +1,45 @@
-# Ignorar archivos de entorno y cachés
-.env
-*.env
+# Python
 __pycache__/
-.DS_Store
 *.pyc
+*.pyo
+*.pyd
+.Python
 
-# Entornos virtuales y herramientas
-venv/
-.venv/
-env/
-.envs/
-.pytest_cache/
-.mypy_cache/
-.vscode/
-.idea/
-
-# Base de datos local
+# Django
 db.sqlite3
+*.sqlite3
+staticfiles/
+media/
+
+# Virtual env
+.venv/
+venv/
+
+# Env files
+.env
+.env.*
+!.env.example
+*.env
+
+# Sensitive JSON and credentials
+figureverse.json
+*.pem
+*.p12
+*.key
+*.crt
+*.cer
+
+# Secrets
+secrets/*
+!secrets/.gitkeep
+
+# Logs and temp
+*.log
+*.tmp
+*.bak
+
+# IDE/OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
