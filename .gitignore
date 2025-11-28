@@ -1,45 +1,29 @@
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
-*.pyd
-.Python
+*.egg-info/
+*.egg
 
 # Django
 db.sqlite3
-*.sqlite3
-staticfiles/
+/static/
 media/
 
-# Virtual env
-.venv/
-venv/
-
-# Env files
+# Entorno
 .env
 .env.*
-!.env.example
 *.env
+venv/
+.venv/
+**/venv/
+**/.venv/
 
-# Sensitive JSON and credentials
-figureverse.json
-*.pem
-*.p12
-*.key
-*.crt
-*.cer
-
-# Secrets
-secrets/*
-!secrets/.gitkeep
-
-# Logs and temp
-*.log
-*.tmp
-*.bak
-
-# IDE/OS
-.DS_Store
-Thumbs.db
-.idea/
+# IDE
 .vscode/
+.idea/
+
+# Credenciales y llaves
+**/serviceAccountKey*.json
+*.pem
+*.key

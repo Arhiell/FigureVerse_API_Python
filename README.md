@@ -1,100 +1,90 @@
-# FigureVerse Analytics API (Django + Firebase)
+# 🧠 FigureVerse API (Python / Django)
 
-API de analytics y asistencia de IA construida con Django y conectada directamente a Firebase (Firestore). No usa base de datos local ni Docker; Firebase es la única fuente de verdad.
+> API de reseñas con integración a Firebase y consumo de Cloud Functions. Proyecto listo para trabajo en equipo, con dependencias definidas, variables de entorno y archivos sensibles excluidos del repositorio.
 
-## Objetivos
-- Leer y escribir métricas en Firestore (`/analytics`, `/product_stats`).
-- Procesar eventos (`/events`) para recalcular overview y ventas por producto.
-- Analizar comentarios con Gemini y publicar insights en `/ai_insights`.
-- Exponer endpoints REST bajo `/v1/` para overview, top productos, recálculo y análisis de comentarios.
+## Visión General
+- Framework: `Django` + `Django REST Framework`.
+- Integraciones: `Firebase Admin` (Firestore) y `Cloud Functions` vía `requests`.
+- App principal: `feedback` expone endpoints para productos y reseñas.
 
-## Colecciones Firebase
-- `/events`: eventos fuente (ventas, catálogo, etc.).
-- `/analytics/overview`: documento con métricas agregadas del negocio.
-- `/product_stats/{product_id}`: métricas agregadas por producto (ventas, etc.).
-- `/comments`: comentarios de usuarios.
-- `/ai_insights`: resultados de análisis de IA (sentimiento, toxicidad, explicación).
-
-## Estructura relevante
-- `social/services/firebase_client.py`: cliente Firestore (lectura/escritura y agregador desde `/events`).
-- `social/services/gemini_client.py`: cliente Gemini (análisis y preguntas libres).
-- `social/services/analytics_service.py`: lectura de overview/top y recálculo/publicación.
-- `social/tasks/sync_events.py`: procesamiento de eventos y publicación en Firestore.
-- `social/views/*`: vistas DRF que exponen los endpoints.
-- `core/settings.py`: configuración (DRF, claves, credenciales Google).
-
-## Endpoints (prefijo `/v1/`)
-- `GET /v1/firebase/test`: prueba de conexión a Firestore.
-- `GET /v1/analytics/overview`: devuelve el documento `/analytics/overview`.
-- `GET /v1/analytics/top-products`: top desde `/product_stats` (ordenado por `sales_total`).
-- `POST /v1/analytics/recalculate`: recalcula overview y `product_stats` a partir de `/events`.
-- `POST /v1/comments/analyze`: guarda comentario, analiza con Gemini y publica insight.
-- `POST /v1/comments/{product_id}/analysis`: analiza texto libre para un producto.
-- `POST /v1/admin/questions`: preguntas libres al modelo Gemini.
+## Estructura del Proyecto
+- `aiReviewsApi/ai_reviews_api/` configuración de Django y Firebase.
+- `aiReviewsApi/feedback/` vistas de API y cliente a Cloud Functions.
+- `requirements.txt` dependencias con rangos estables.
+- `.gitignore` excluye credenciales y archivos generados.
 
 ## Dependencias
-Listado en `requirements.txt`:
-- `django` y `djangorestframework`.
-- `firebase-admin` y `google-cloud-firestore`.
-- `google-generativeai` (Gemini).
-- `django-environ`, `requests`, `gunicorn`.
+Instalar con:
 
-## Variables de entorno (.env)
-Tomar `.env.example` y completar:
-- `DJANGO_SECRET_KEY`: clave de Django.
-- `DEBUG`: `True/False`.
-- `ALLOWED_HOSTS`: lista separada por comas.
-- `GOOGLE_APPLICATION_CREDENTIALS`: ruta absoluta al JSON de servicio (Windows usa `\\`).
-- `FIREBASE_PROJECT_ID`: ID del proyecto Firebase (opcional, recomendable).
-- `GEMINI_API_KEY`: clave de API para Google Generative AI.
-
-Ejemplo (Windows):
-```
-DJANGO_SECRET_KEY=dev-secret
-DEBUG=True
-ALLOWED_HOSTS=127.0.0.1,localhost
-GOOGLE_APPLICATION_CREDENTIALS=C:\\Users\\tuusuario\\Desktop\\FigureVerse_API_Python\\figureverse.json
-FIREBASE_PROJECT_ID=figureverse-xxxx
-GEMINI_API_KEY=ya29....
-```
-
-## Instalación y arranque (local, sin Docker)
-1) Crear y activar entorno virtual:
-```
-python -m venv .venv
-.\.venv\Scripts\activate
-```
-2) Instalar dependencias:
-```
+```bash
 pip install -r requirements.txt
 ```
-3) Configurar `.env` y credenciales.
-4) Levantar servidor:
+
+Incluye:
+- `Django` (>=5.2,<5.3)
+- `djangorestframework` (>=3.14,<3.16)
+- `firebase-admin` (>=6.3,<7)
+- `requests` (>=2.31,<3)
+
+## Variables de Entorno
+Configurar antes de ejecutar:
+
+- `DJANGO_SECRET_KEY` clave secreta de Django.
+- `DJANGO_DEBUG` `True` o `False`.
+- `DJANGO_ALLOWED_HOSTS` lista separada por comas (ej. `localhost,127.0.0.1`).
+- `CLOUD_FUNCTIONS_BASE_URL` base de tus Cloud Functions.
+- `GEMINI_API_KEY` si usas Gemini.
+- `FIREBASE_CREDENTIALS` ruta al `serviceAccountKey.json` (en producción).
+
+> Nota: por defecto en desarrollo se usa `aiReviewsApi/ai_reviews_api/serviceAccountKey.json` si existe localmente.
+
+## Seguridad y Archivos Sensibles
+- `.gitignore` bloquea `**/serviceAccountKey*.json`, `.env`, llaves (`*.pem`, `*.key`) y artefactos.
+- Nunca subas `serviceAccountKey.json` ni secretos al repositorio.
+- Usa `FIREBASE_CREDENTIALS` en producción para apuntar al JSON fuera del código.
+
+## Ejecución
+1) Migraciones iniciales (si aplica):
+```bash
+python manage.py migrate
 ```
-python manage.py runserver 0.0.0.0:8000
+
+2) Servidor de desarrollo:
+```bash
+python manage.py runserver
 ```
-Accede a `http://127.0.0.1:8000/`.
 
-## Despliegue sin Docker
-- Incluido `Procfile` para plataformas con buildpacks (Render/Railway/Heroku):
-  - `web: gunicorn core.wsgi:application --bind 0.0.0.0:$PORT`
-- Asegura `GOOGLE_APPLICATION_CREDENTIALS` en variables del servicio y sube el JSON de credenciales como Secret (no en el repo).
+API base: `http://localhost:8000/api/`
 
-## Pruebas rápidas
-- Script: `python test_firebase_connection.py` (verifica credenciales y lectura de `events`).
-- Navegador:
-  - `http://localhost:8000/v1/firebase/test`
-  - `http://localhost:8000/v1/analytics/overview`
-  - `http://localhost:8000/v1/analytics/top-products`
-  - `http://localhost:8000/v1/analytics/recalculate` (POST)
-  - `http://localhost:8000/v1/comments/analyze` (POST JSON: `{ product_id, text, rating? }`)
-  - `http://localhost:8000/v1/admin/questions` (POST JSON: `{ question }`)
+## Endpoints
+- `GET /api/productos/` listado de productos.
+- `GET /api/resenas/` listado de reseñas.
+- `GET /api/resenas/producto/<product_id>/` reseñas por producto.
 
-## Troubleshooting
-- Falta `GEMINI_API_KEY`: el cliente lanzará un error descriptivo.
-- `GOOGLE_APPLICATION_CREDENTIALS` inválido o ruta incorrecta: Firestore no inicializa.
-- Windows: usar rutas con `\\` en `.env`.
+Implementación:
+- Vistas en `aiReviewsApi/feedback/views_data.py`.
+- Cliente de Cloud Functions en `aiReviewsApi/feedback/services/cloud_functions_client.py`.
 
-## Seguridad y buenas prácticas
-- No subir `.env` ni JSON de servicio. Usa `secrets/` local y `.gitignore`.
-- Configurar dominios en `ALLOWED_HOSTS` para producción.
+## Firebase
+- Se inicializa con `firebase_admin` y un `serviceAccountKey.json`.
+- Configuración en `aiReviewsApi/ai_reviews_api/settings.py`.
+- En producción, usa `FIREBASE_CREDENTIALS` para la ruta del JSON.
+
+## Notas de Configuración
+- `settings.py` carga secretos desde variables de entorno y corrige el orden de `BASE_DIR`.
+- La base de datos por defecto es SQLite (`db.sqlite3`), ignorada por `.gitignore`.
+
+## Icono
+- Proyecto identificado con 🧠 en el título.
+- Puedes reemplazarlo por un logo propio enlazado vía URL externa si lo deseas.
+
+## Trabajo en Equipo
+- Tu compañero solo necesita:
+  - Clonar el repo.
+  - Crear/ubicar `serviceAccountKey.json` localmente o definir `FIREBASE_CREDENTIALS`.
+  - Exportar variables de entorno indicadas.
+  - Instalar dependencias con `pip install -r requirements.txt`.
+  - Ejecutar `python manage.py runserver`.
+
+## Licencia
+- Define la licencia que aplique a tu proyecto.
