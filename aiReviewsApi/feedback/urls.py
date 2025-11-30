@@ -1,20 +1,24 @@
 from django.urls import path
-from . import views_data
+from .views_data import (
+    ProductosView,
+    ResenasView,
+    ResenasPorProductoView,
+)
 from . import views_analysis
 
 urlpatterns = [
     # --- Endpoints de datos crudos (Cloud Functions) ---
 
     # GET /api/productos/
-    path("productos/", views_data.productos_list, name="productos-list"),
+    path("productos/", ProductosView.as_view(), name="productos-list"),
 
     # GET /api/resenas/
-    path("resenas/", views_data.resenas_list, name="resenas-list"),
+    path("resenas/", ResenasView.as_view(), name="resenas-list"),
 
     # GET /api/resenas/producto/<id>/
     path(
         "resenas/producto/<int:product_id>/",
-        views_data.resenas_by_product,
+        ResenasPorProductoView.as_view(),
         name="resenas-by-product",
     ),
 
