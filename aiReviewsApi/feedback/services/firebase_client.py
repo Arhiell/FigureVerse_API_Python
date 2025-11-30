@@ -8,9 +8,12 @@ COLLECTION_NAME = "product_analysis"
 def _get_collection():
     """
     Devuelve la referencia a la colección de análisis en Firestore.
-    Requiere que en settings.py se haya inicializado FIRESTORE_DB.
+    Si FIRESTORE_DB no está configurado, devuelve None para no romper en desarrollo.
     """
-    return settings.FIRESTORE_DB.collection(COLLECTION_NAME)
+    db = getattr(settings, "FIRESTORE_DB", None)
+    if db is None:
+        return None
+    return db.collection(COLLECTION_NAME)
 
 
 def save_product_analysis(product_id, analysis_data: dict):
@@ -20,7 +23,11 @@ def save_product_analysis(product_id, analysis_data: dict):
     - product_id: ID del producto (int o str)
     - analysis_data: diccionario con los campos del análisis
     """
-    doc_ref = _get_collection().document(str(product_id))
+    col = _get_collection()
+    if col is None:
+        # Entorno sin Firebase configurado: no guardamos pero no rompemos
+        return
+    doc_ref = col.document(str(product_id))
 
     # Siempre agregamos/actualizamos la fecha de último análisis
     analysis_data["last_analyzed_at"] = datetime.utcnow().isoformat() + "Z"
@@ -34,7 +41,11 @@ def get_product_analysis(product_id):
     Obtiene el análisis de un producto desde Firestore.
     Devuelve un diccionario o None si no existe.
     """
-    doc_ref = _get_collection().document(str(product_id))
+    col = _get_collection()
+    if col is None:
+        # Entorno sin Firebase: comportarnos como si no existiera análisis
+        return None
+    doc_ref = col.document(str(product_id))
     doc = doc_ref.get()
 
     if not doc.exists:
