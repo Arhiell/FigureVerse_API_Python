@@ -5,6 +5,20 @@ from firebase_admin import credentials, firestore
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+ENV_PATH = os.path.join(BASE_DIR, ".env")
+if os.path.exists(ENV_PATH):
+    try:
+        with open(ENV_PATH, "r", encoding="utf-8") as f:
+            for line in f:
+                s = line.strip()
+                if not s or s.startswith("#"):
+                    continue
+                k, sep, v = s.partition("=")
+                if sep:
+                    os.environ[k.strip()] = v.strip().strip('"').strip("'")
+    except Exception:
+        pass
+
 FIREBASE_CREDENTIALS = (
     os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
     or os.environ.get("FIREBASE_CREDENTIALS_PATH")
