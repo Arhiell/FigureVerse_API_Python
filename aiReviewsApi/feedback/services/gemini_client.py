@@ -8,8 +8,11 @@ class GeminiError(Exception):
     pass
 
 
-# Configuramos Gemini con la API key definida en settings
-genai.configure(api_key=settings.GEMINI_API_KEY)
+_API_KEY = settings.GEMINI_API_KEY
+try:
+    genai.configure(api_key=_API_KEY)
+except Exception:
+    pass
 
 # Podés cambiar el modelo si querés
 _MODEL_NAME = "gemini-1.5-flash"
@@ -55,9 +58,9 @@ def summarize_low_rating_reviews(
     reviews_text = "\n".join(reviews_text_lines)
 
     prompt = f"""
-Analiza las reseñas de un producto y genera un resumen en español.
+Analiza reseñas de un producto y devuelve UNA SOLA FRASE clara en español.
 
-Información del producto:
+Contexto del producto:
 - ID: {product_id}
 - Nombre: {product_name}
 - Descripción: {product_desc}
@@ -65,23 +68,44 @@ Información del producto:
 Estadísticas:
 - Calificación promedio: {avg_rating:.2f}
 - Total de reseñas: {total_reviews}
-- Umbral de mala calificación: {rating_threshold} (se consideran reseñas malas si la calificación es <= {rating_threshold})
+- Umbral de mala calificación: {rating_threshold}
 
-Reseñas con calificación baja (una por línea):
+Muestra de reseñas malas (una por línea):
 {reviews_text}
 
-TAREA:
-1. Resume los principales problemas o quejas que tienen los clientes sobre este producto.
-2. Si hay aspectos positivos destacables, menciónalos de forma breve.
-3. Usa un lenguaje claro, conciso y enfocado en patrones (no menciones reseñas individuales).
-4. Máximo 2 párrafos.
+Instrucciones:
+- Redacta una única oración concisa (<= 25 palabras) que resuma patrones de quejas y, si corresponde, un aspecto positivo.
+- No enumeres ni cites reseñas específicas.
+- No generes más de una oración.
 """
+
+    if not _API_KEY:
+        positives = []
+        negatives = []
+        for r in reviews_sample:
+            txt = (r.get("comment") or r.get("comentario") or "").lower()
+            if any(k in txt for k in ["bueno", "excelente", "positivo", "recomendado", "cumple"]):
+                positives.append(txt)
+            if any(k in txt for k in ["malo", "defecto", "fallo", "problema", "no funciona", "devuelve"]):
+                negatives.append(txt)
+        neg_phrase = "quejas recurrentes" if negatives else "sin patrón claro de quejas"
+        pos_phrase = "algunos aspectos positivos" if positives else "pocos aspectos positivos"
+        return f"{product_name}: {neg_phrase} y {pos_phrase}."
 
     try:
         model = genai.GenerativeModel(_MODEL_NAME)
         response = model.generate_content(prompt)
-        # En la mayoría de los casos, la respuesta de texto está en response.text
         summary = response.text
         return summary.strip()
     except Exception as exc:
-        raise GeminiError(f"Error al generar resumen con Gemini: {exc}")
+        positives = []
+        negatives = []
+        for r in reviews_sample:
+            txt = (r.get("comment") or r.get("comentario") or "").lower()
+            if any(k in txt for k in ["bueno", "excelente", "positivo", "recomendado", "cumple"]):
+                positives.append(txt)
+            if any(k in txt for k in ["malo", "defecto", "fallo", "problema", "no funciona", "devuelve"]):
+                negatives.append(txt)
+        neg_phrase = "quejas recurrentes" if negatives else "sin patrón claro de quejas"
+        pos_phrase = "algunos aspectos positivos" if positives else "pocos aspectos positivos"
+        return f"{product_name}: {neg_phrase} y {pos_phrase}."

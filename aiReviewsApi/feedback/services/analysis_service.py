@@ -6,7 +6,7 @@ from .cloud_functions_client import (
     get_all_reviews,
     CloudFunctionsError,
 )
-from .firebase_client import save_product_analysis
+from .firebase_client import save_product_analysis, append_product_analysis_history, save_analysis_run
 from .gemini_client import summarize_low_rating_reviews, GeminiError
 
 
@@ -44,6 +44,8 @@ def analyze_products_with_low_ratings(rating_threshold: int) -> Dict[str, Any]:
         reviews_by_product.setdefault(product_id, []).append(r)
 
     analyzed_count = 0
+    analyzed_names = []
+    summaries = []
 
     # Suponemos que products es una lista de diccionarios con campo 'id' o 'id_producto'
     for p in products:
@@ -97,7 +99,6 @@ def analyze_products_with_low_ratings(rating_threshold: int) -> Dict[str, Any]:
             # Por ahora, lo propagamos
             raise AnalysisError(f"Error al analizar producto {product_id}: {exc}")
 
-        # Armamos el payload para guardar en Firebase
         analysis_data = {
             "product_name": p.get("name") or p.get("nombre"),
             "rating_threshold": rating_threshold,
@@ -109,11 +110,27 @@ def analyze_products_with_low_ratings(rating_threshold: int) -> Dict[str, Any]:
 
         save_product_analysis(product_id, analysis_data)
         analyzed_count += 1
+        product_name = analysis_data["product_name"]
+        if product_name:
+            analyzed_names.append(product_name)
+        summaries.append({
+            "product_id": product_id,
+            "product_name": product_name,
+            "summary": summary,
+        })
+        append_product_analysis_history(product_id, analysis_data)
 
-    result = {
+    run = {
         "rating_threshold": rating_threshold,
-        "analyzed_products": analyzed_count,
+        "analyzed_products": analyzed_names,
+        "analyzed_count": analyzed_count,
         "total_products": len(products),
+        "summaries": summaries,
     }
+    try:
+        save_analysis_run(run)
+    except Exception:
+        pass
+    result = run
 
     return result

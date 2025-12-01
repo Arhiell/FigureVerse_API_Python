@@ -37,4 +37,29 @@ urlpatterns = [
         views_analysis.product_analysis_summary,
         name="product-analysis-summary",
     ),
+    path(
+        "analisis/productos/resumenes/",
+        views_analysis.product_analyses_list,
+        name="product-analyses-list",
+    ),
+    path(
+        "analisis/runs/",
+        views_analysis.analysis_runs_list,
+        name="analysis-runs-list",
+    ),
+    path(
+        "analisis/productos/<int:product_id>/historial/",
+        views_analysis.product_analysis_history_list,
+        name="product-analysis-history",
+    ),
+    path(
+        "comentarios/producto/<int:product_id>/",
+        views_analysis.product_comments_list,
+        name="product-comments-list",
+    ),
+    path(
+        "comentarios/producto/<int:product_id>/sync/",
+        views_analysis.sync_product_comments,
+        name="product-comments-sync",
+    ),
 ]
