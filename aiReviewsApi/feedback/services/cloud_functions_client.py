@@ -4,6 +4,7 @@ from django.conf import settings
 
 BASE_URL = settings.CLOUD_FUNCTIONS_BASE_URL
 FALLBACK_BASE_URL = getattr(settings, "CLOUD_FUNCTIONS_FALLBACK_BASE_URL", None)
+EMULATOR_BASE_URL = getattr(settings, "CLOUD_FUNCTIONS_EMULATOR_BASE_URL", None)
 TIMEOUT = getattr(settings, "CLOUD_FUNCTIONS_TIMEOUT", 10)
 AUTH_TOKEN = getattr(settings, "CLOUD_FUNCTIONS_AUTH_TOKEN", None)
 FN = getattr(settings, "CLOUD_FUNCTIONS_FUNCTION_NAME", "api")
@@ -25,20 +26,35 @@ def _headers():
     return h
 
 
+def _compose_url(base: str, path: str):
+    base_trimmed = base.rstrip("/")
+    return f"{base_trimmed}{path}"
+
+
 def _get_json(path: str):
-    url = f"{BASE_URL}{path}"
-    verify = certifi.where() if VERIFY_TLS else False
-    try:
-        response = requests.get(url, headers=_headers(), timeout=TIMEOUT, verify=verify, allow_redirects=True)
-        response.raise_for_status()
-        return response.json()
-    except requests.RequestException:
-        if FALLBACK_BASE_URL:
-            fb_url = f"{FALLBACK_BASE_URL}{path}"
-            response = requests.get(fb_url, headers=_headers(), timeout=TIMEOUT, verify=verify, allow_redirects=True)
+    bases = []
+    if EMULATOR_BASE_URL:
+        bases.append(EMULATOR_BASE_URL)
+    bases.append(BASE_URL)
+    if FALLBACK_BASE_URL:
+        bases.append(FALLBACK_BASE_URL)
+
+    last_exc = None
+    for base in bases:
+        url = _compose_url(base, path)
+        is_emulator = base.startswith("http://localhost:") or base.startswith("http://127.0.0.1:")
+        verify = False if is_emulator else (certifi.where() if VERIFY_TLS else False)
+        try:
+            response = requests.get(url, headers=_headers(), timeout=TIMEOUT, verify=verify, allow_redirects=True)
+            if 500 <= response.status_code < 600:
+                raise requests.HTTPError(response=response)
             response.raise_for_status()
             return response.json()
-        raise
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.SSLError, requests.HTTPError) as e:
+            last_exc = e
+            continue
+
+    raise CloudFunctionsError(str(last_exc) if last_exc else "Unknown error calling Cloud Functions")
 
 
 def get_products():
