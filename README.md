@@ -1,121 +1,129 @@
 # 🧠 FigureVerse API (Python / Django)
 
-> API de reseñas con integración a Firebase y consumo de Cloud Functions. Proyecto listo para trabajo en equipo, con dependencias definidas, variables de entorno y archivos sensibles excluidos del repositorio.
+API de reseñas y análisis con integración a Firebase (Firestore), consumo de Cloud Functions y generación de resúmenes con Gemini. Pensada para trabajo en equipo, con configuración por entorno y buenas prácticas de seguridad.
 
 ## Visión General
 
 - Framework: `Django` + `Django REST Framework`.
-- Integraciones: `Firebase Admin` (Firestore) y `Cloud Functions` vía `requests`.
-- App principal: `feedback` expone endpoints para productos y reseñas.
+- Integraciones: `Firebase Admin` (Firestore), `Cloud Functions` vía `requests`, `Google Generative AI (Gemini)`.
+- App principal: `feedback` expone endpoints de datos, análisis, runs, historial y comentarios.
 
-## Estructura del Proyecto
+## Arquitectura
 
-- `aiReviewsApi/ai_reviews_api/` configuración de Django y Firebase.
-- `aiReviewsApi/feedback/` vistas de API y cliente a Cloud Functions.
-- `requirements.txt` dependencias con rangos estables.
-- `.gitignore` excluye credenciales y archivos generados.
-
-## Dependencias
-
-Instalar con:
-
-```bash
-pip install -r requirements.txt
-```
-
-Incluye:
-
-- `Django` (>=5.2,<5.3)
-- `djangorestframework` (>=3.14,<3.16)
-- `firebase-admin` (>=6.3,<7)
-- `requests` (>=2.31,<3)
-- `google-generativeai` (>=0.6,<0.8)
-- `certifi` (CA bundle para HTTPS estable)
-
-## Variables de Entorno
-
-Se cargan automáticamente desde `.env` si existe (ver `.env.example`). Puedes exportarlas manualmente si prefieres.
-
-- `DJANGO_SECRET_KEY` clave secreta de Django.
-- `DJANGO_DEBUG` `True` o `False`.
-- `DJANGO_ALLOWED_HOSTS` lista separada por comas (ej. `localhost,127.0.0.1`).
-- `CLOUD_FUNCTIONS_BASE_URL` base principal (Cloud Run/Functions/Emulador).
-- `CLOUD_FUNCTIONS_FALLBACK_BASE_URL` base de respaldo (opcional; por defecto Cloud Functions).
-- `CLOUD_FUNCTIONS_FUNCTION_NAME` nombre de la función (por defecto `api`).
-- `CLOUD_FUNCTIONS_VERIFY_TLS` `True`/`False` para verificación TLS (usa `certifi` cuando es `True`).
-- `CLOUD_FUNCTIONS_EMULATOR_BASE_URL` base del emulador (`http://localhost:5001/figureverse-9b12e/us-central1/api`).
-- `GOOGLE_APPLICATION_CREDENTIALS` / `FIREBASE_CREDENTIALS_PATH` ruta al `serviceAccountKey.json`.
-- `FIREBASE_PROJECT_ID` id del proyecto Firebase.
-
-Notas:
-
-- En desarrollo (`DEBUG=True`) la base por defecto apunta al emulador.
-- En producción la base por defecto apunta a Cloud Run, con fallback a Cloud Functions.
-
-## Seguridad y Archivos Sensibles
-
-- `.gitignore` bloquea `**/serviceAccountKey*.json`, `.env`, llaves (`*.pem`, `*.key`) y artefactos.
-- Nunca subas `serviceAccountKey.json` ni secretos al repositorio.
-- Usa `FIREBASE_CREDENTIALS` en producción para apuntar al JSON fuera del código.
-
-## Ejecución
-
-1. Copia `.env.example` a `.env` y ajusta las variables (Cloud Run/Functions/Emulador).
-
-2. Migraciones iniciales (si aplica):
-
-```bash
-python manage.py migrate
-```
-
-3. Servidor de desarrollo:
-
-```bash
-python manage.py runserver
-```
-
-API base: `http://localhost:8000/api/`
+- Configuración: `aiReviewsApi/ai_reviews_api/settings.py` (carga `.env`, inicializa Firestore, define URLs de Cloud Functions).
+- Servicios:
+  - `aiReviewsApi/feedback/services/cloud_functions_client.py` consumo de productos y reseñas.
+  - `aiReviewsApi/feedback/services/firebase_client.py` persistencia en Firestore (`product_analysis`, `product_analysis_history`, `analysis_runs`, `product_comments`).
+  - `aiReviewsApi/feedback/services/analysis_service.py` lógica de análisis y resúmenes.
+  - `aiReviewsApi/feedback/services/gemini_client.py` generación de resúmenes en una sola frase.
+- Ruteo: `aiReviewsApi/feedback/urls.py` mapea los endpoints.
 
 ## Endpoints
 
-- `GET /api/productos/` listado de productos.
-- `GET /api/resenas/` listado de reseñas.
-- `GET /api/resenas/producto/<product_id>/` reseñas por producto.
+- Datos (Cloud Functions):
+  - `GET /api/productos/` lista productos (`aiReviewsApi/feedback/urls.py:12`).
+  - `GET /api/resenas/` lista todas las reseñas (`aiReviewsApi/feedback/urls.py:16`).
+  - `GET /api/resenas/producto/<id>/` reseñas por producto (`aiReviewsApi/feedback/urls.py:18–23`).
 
-Implementación y consumo:
+- Análisis (Gemini + Firebase):
+  - `POST /api/analisis/productos/malas-calificaciones/` ejecuta análisis por umbral (`aiReviewsApi/feedback/urls.py:27–32`).
+  - `GET /api/analisis/productos/<id>/resumen/` último análisis de un producto (`aiReviewsApi/feedback/urls.py:34–39`).
+  - `GET /api/analisis/productos/resumenes/` listado de análisis, ordenado y paginado (`aiReviewsApi/feedback/urls.py:41–44`).
+  - `GET /api/analisis/runs/` corridas del análisis (`aiReviewsApi/feedback/urls.py:46–49`).
+  - `GET /api/analisis/productos/<id>/historial/` historial del producto (`aiReviewsApi/feedback/urls.py:51–54`).
 
-- Vistas en `aiReviewsApi/feedback/views_data.py`.
-- Cliente HTTP en `aiReviewsApi/feedback/services/cloud_functions_client.py`.
-- Rutas remotas:
-  - Cloud Run: `https://api-pcjssvdena-uc.a.run.app/api/...`
-  - Cloud Functions: `https://us-central1-figureverse-9b12e.cloudfunctions.net/api/api/...` (doble `api` por nombre de función + prefijo interno)
-  - Emulador: `http://localhost:5001/figureverse-9b12e/us-central1/api/api/...`
+- Comentarios (Firestore):
+  - `POST /api/comentarios/producto/<id>/sync/` sincroniza comentarios desde Cloud Functions (`aiReviewsApi/feedback/urls.py:61–64`).
+  - `GET /api/comentarios/producto/<id>/` lista comentarios con filtros y paginación (`aiReviewsApi/feedback/urls.py:56–59`).
 
-## Firebase
+### Parámetros de consulta
 
-- Se inicializa con `firebase_admin` y un `serviceAccountKey.json`.
-- Configuración en `aiReviewsApi/ai_reviews_api/settings.py`.
-- En producción, usa `FIREBASE_CREDENTIALS` para la ruta del JSON.
+- `GET /api/analisis/productos/resumenes/`:
+  - `page`, `page_size`, `product_name`.
+- `GET /api/comentarios/producto/<id>/`:
+  - `page`, `page_size`, `q` (texto), `from` (ISO), `to` (ISO).
 
-## Notas de Configuración
+## Colecciones en Firestore
 
-- `settings.py` carga secretos desde variables de entorno y corrige el orden de `BASE_DIR`.
-- La base de datos por defecto es SQLite (`db.sqlite3`), ignorada por `.gitignore`.
+- `product_analysis`: último análisis por producto (incluye `summary`, métricas y `last_analyzed_at`).
+- `product_analysis_history`: documento por `product_id`; subcolección `runs` con entradas históricas.
+- `analysis_runs`: una entrada por corrida con métricas agregadas y `created_at`.
+- `product_comments`: documento por `product_id`; subcolección `comments` con cada comentario.
 
-## Icono
+## Instalación
 
-- Proyecto identificado con 🧠 en el título.
-- Puedes reemplazarlo por un logo propio enlazado vía URL externa si lo deseas.
+```bash
+python -m venv venv
+./venv/Scripts/activate  # Windows
+pip install -r requirements.txt
+```
 
-## Trabajo en Equipo
+## Configuración
 
-- Tu compañero solo necesita:
-  - Clonar el repo.
-  - Crear/ubicar `serviceAccountKey.json` localmente o definir `FIREBASE_CREDENTIALS`.
-  - Exportar variables de entorno indicadas.
-  - Instalar dependencias con `pip install -r requirements.txt`.
-  - Ejecutar `python manage.py runserver`.
+- Variables de entorno (ver `.env.example`):
+  - `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`.
+  - `GEMINI_API_KEY`.
+  - `GOOGLE_APPLICATION_CREDENTIALS` o `FIREBASE_CREDENTIALS_PATH`.
+  - `FIREBASE_PROJECT_ID`.
+  - `CLOUD_FUNCTIONS_BASE_URL`, `CLOUD_FUNCTIONS_FALLBACK_BASE_URL`, `CLOUD_FUNCTIONS_EMULATOR_BASE_URL`, `CLOUD_FUNCTIONS_FUNCTION_NAME`, `CLOUD_FUNCTIONS_VERIFY_TLS`, `CLOUD_FUNCTIONS_TIMEOUT`.
+
+Notas:
+
+- En desarrollo (`DEBUG=True`) se usa el emulador si está definido; en producción, Cloud Run con fallback.
+- No commitear credenciales ni `.env`. Los archivos sensibles están excluidos por `.gitignore`.
+
+## Ejecución
+
+```bash
+python manage.py runserver 0.0.0.0:8000
+```
+
+Base: `http://localhost:8000/api/`
+
+## Pruebas rápidas (curl)
+
+- Ejecutar análisis: `curl -X POST http://127.0.0.1:8000/api/analisis/productos/malas-calificaciones/ -H "Content-Type: application/json" -d "{\"rating_threshold\": 3}"`
+- Listar resúmenes: `curl "http://127.0.0.1:8000/api/analisis/productos/resumenes/?page=1&page_size=10&product_name=iphone"`
+- Sincronizar comentarios: `curl -X POST http://127.0.0.1:8000/api/comentarios/producto/1/sync/`
+- Listar comentarios: `curl "http://127.0.0.1:8000/api/comentarios/producto/1/?page=1&page_size=5&q=calidad&from=2025-12-01"`
+
+## Buenas Prácticas
+
+- No exponer secretos ni credenciales en el repositorio.
+- Mantener `requirements.txt` actualizado y con rangos estables.
+- Usar ramas feature y Pull Requests para cambios significativos.
+
+## Ecosistema y Repositorios
+
+- Figure Verse – Página Web de Productos
+  - URL: `https://github.com/Arhiell/FigureVerse_Web.git`
+  - Enfoque en cliente: catálogos, compras, etc.
+
+- Figure Verse – Aplicación de Escritorio
+  - URL: `https://github.com/BautiC-9/FigureVerse-Escritorio.git`
+  - Apartado de administradores para la gestión de la tienda.
+
+- API desarrollada en Node
+  - URL: `https://github.com/Arhiell/FigureVerse-API.git`
+  - Núcleo de gestión y peticiones del ecosistema (web y escritorio).
+
+- API en Django (este repositorio)
+  - URL: `https://github.com/Arhiell/FigureVerse_API_Python.git`
+  - Integra Cloud Functions y Gemini para análisis de reseñas.
+
+## Autores y Universidad
+
+- Universidad Tecnológica Nacional (UTN) – Facultad Regional Resistencia
+- Carrera: Técnico Universitario en Programación
+
+- Autores:
+  - Ayala, Ariel: `https://github.com/Arhiell`
+  - Capovilla, Bautista: `https://github.com/BautiC-9`
+
+- Profesores de la cátedra:
+  - Python: Goya, Juan Manuel
+  - JavaScript: Puljiz, Emilio
 
 ## Licencia
 
-- Define la licencia que aplique a tu proyecto.
+- Definir la licencia aplicable al proyecto.
