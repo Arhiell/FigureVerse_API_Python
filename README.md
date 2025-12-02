@@ -233,7 +233,3 @@ Comentarios (Firestore):
 - Carrera: Técnico Universitario en Programación.
 - Autores: Ayala, Ariel (`https://github.com/Arhiell`), Capovilla, Bautista (`https://github.com/BautiC-9`).
 - Profesores: Python (Goya, Juan Manuel) — JavaScript (Puljiz, Emilio).
-
-## Licencia
-
-- Definir la licencia aplicable al proyecto.
