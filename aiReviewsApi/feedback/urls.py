@@ -62,4 +62,14 @@ urlpatterns = [
         views_analysis.sync_product_comments,
         name="product-comments-sync",
     ),
+    path(
+        "opiniones/producto/<int:product_id>/resumen/",
+        views_analysis.product_opinion_summary,
+        name="product-opinion-summary",
+    ),
+    path(
+        "opiniones/productos/sync/",
+        views_analysis.sync_product_opinions,
+        name="product-opinions-sync",
+    ),
 ]

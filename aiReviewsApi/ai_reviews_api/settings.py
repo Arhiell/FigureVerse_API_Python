@@ -77,7 +77,7 @@ INSTALLED_APPS = [
       # Apps de terceros
     'rest_framework',
     # Nuestra app
-    'feedback',
+    'feedback.apps.FeedbackConfig',
 ]
 
 MIDDLEWARE = [

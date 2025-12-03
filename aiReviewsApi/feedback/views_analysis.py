@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from .services.analysis_service import (
     analyze_products_with_low_ratings,
     AnalysisError,
+    analyze_general_opinion_for_products,
 )
 from .services.firebase_client import (
     get_product_analysis,
@@ -114,3 +115,20 @@ def sync_product_comments(request, product_id: int):
     items = reviews if isinstance(reviews, list) else (reviews.get("results") or [])
     saved = save_product_comments(product_id, items)
     return Response({"product_id": product_id, "saved": saved}, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+def product_opinion_summary(request, product_id: int):
+    data = get_product_analysis(product_id)
+    if not data or not data.get("general_opinion"):
+        return Response({"detail": "No hay opinión general guardada para este producto."}, status=status.HTTP_404_NOT_FOUND)
+    return Response({"product_id": product_id, "product_name": data.get("product_name"), "general_opinion": data.get("general_opinion")}, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+def sync_product_opinions(request):
+    try:
+        result = analyze_general_opinion_for_products()
+    except AnalysisError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+    return Response(result, status=status.HTTP_200_OK)

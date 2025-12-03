@@ -7,7 +7,7 @@ from .cloud_functions_client import (
     CloudFunctionsError,
 )
 from .firebase_client import save_product_analysis, append_product_analysis_history, save_analysis_run
-from .gemini_client import summarize_low_rating_reviews, GeminiError
+from .gemini_client import summarize_low_rating_reviews, summarize_general_opinion, GeminiError
 
 
 class AnalysisError(Exception):
@@ -134,3 +134,76 @@ def analyze_products_with_low_ratings(rating_threshold: int) -> Dict[str, Any]:
     result = run
 
     return result
+
+
+def analyze_general_opinion_for_products() -> Dict[str, Any]:
+    try:
+        products = get_products()
+        all_reviews = get_all_reviews()
+    except CloudFunctionsError as exc:
+        raise AnalysisError(f"Error al leer datos desde Cloud Functions: {exc}")
+
+    reviews_by_product = {}
+    for r in all_reviews:
+        product_id = r.get("product_id") or r.get("id_producto")
+        if product_id is None:
+            continue
+        reviews_by_product.setdefault(product_id, []).append(r)
+
+    analyzed_count = 0
+    analyzed_names = []
+    summaries = []
+
+    for p in products:
+        product_id = p.get("id") or p.get("id_producto")
+        if product_id is None:
+            continue
+        product_reviews = reviews_by_product.get(product_id, [])
+        if not product_reviews:
+            continue
+
+        ratings = []
+        for r in product_reviews:
+            rating_value = r.get("rating") or r.get("calificacion")
+            try:
+                ratings.append(float(rating_value))
+            except (TypeError, ValueError):
+                continue
+        avg_rating = mean(ratings) if ratings else 0.0
+        total_reviews = len(product_reviews)
+
+        try:
+            summary = summarize_general_opinion(product=p, reviews=product_reviews)
+        except GeminiError as exc:
+            raise AnalysisError(f"Error al analizar producto {product_id}: {exc}")
+
+        analysis_data = {
+            "product_name": p.get("name") or p.get("nombre"),
+            "avg_rating": avg_rating,
+            "total_reviews": total_reviews,
+            "general_opinion": summary,
+        }
+
+        save_product_analysis(product_id, analysis_data)
+        analyzed_count += 1
+        product_name = analysis_data["product_name"]
+        if product_name:
+            analyzed_names.append(product_name)
+        summaries.append({
+            "product_id": product_id,
+            "product_name": product_name,
+            "general_opinion": summary,
+        })
+        append_product_analysis_history(product_id, analysis_data)
+
+    run = {
+        "analyzed_products": analyzed_names,
+        "analyzed_count": analyzed_count,
+        "total_products": len(products),
+        "general_summaries": summaries,
+    }
+    try:
+        save_analysis_run(run)
+    except Exception:
+        pass
+    return run

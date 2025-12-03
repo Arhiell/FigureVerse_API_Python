@@ -109,3 +109,57 @@ Instrucciones:
         neg_phrase = "quejas recurrentes" if negatives else "sin patrón claro de quejas"
         pos_phrase = "algunos aspectos positivos" if positives else "pocos aspectos positivos"
         return f"{product_name}: {neg_phrase} y {pos_phrase}."
+
+
+def summarize_general_opinion(product: Dict[str, Any], reviews: List[Dict[str, Any]]) -> str:
+    product_id = product.get("id") or product.get("id_producto") or "desconocido"
+    product_name = product.get("name") or product.get("nombre") or "Producto sin nombre"
+    product_desc = product.get("description") or product.get("descripcion") or ""
+
+    max_reviews = 100
+    sample = reviews[:max_reviews]
+
+    lines = []
+    for idx, r in enumerate(sample, start=1):
+        rating = r.get("rating") or r.get("calificacion") or "?"
+        comment = r.get("comment") or r.get("comentario") or ""
+        lines.append(f"{idx}. {rating}: {comment}")
+    reviews_text = "\n".join(lines)
+
+    prompt = (
+        "Analiza reseñas de un producto y devuelve una sola frase en español con la opinión general, "
+        "equilibrando aspectos positivos y negativos, sin enumerar reseñas ni citar textualmente.\n\n"
+        f"ID: {product_id}\nNombre: {product_name}\nDescripción: {product_desc}\n\n"
+        f"Muestra de reseñas:\n{reviews_text}\n\n"
+        "Una única oración concisa (≤ 25 palabras)."
+    )
+
+    if not _API_KEY:
+        positives = []
+        negatives = []
+        for r in sample:
+            txt = (r.get("comment") or r.get("comentario") or "").lower()
+            if any(k in txt for k in ["bueno", "excelente", "positivo", "recomendado", "cumple"]):
+                positives.append(txt)
+            if any(k in txt for k in ["malo", "defecto", "fallo", "problema", "no funciona", "devuelve"]):
+                negatives.append(txt)
+        neg_phrase = "quejas recurrentes" if negatives else "sin patrón claro de quejas"
+        pos_phrase = "algunos aspectos positivos" if positives else "pocos aspectos positivos"
+        return f"{product_name}: {neg_phrase} y {pos_phrase}."
+
+    try:
+        model = genai.GenerativeModel(_MODEL_NAME)
+        response = model.generate_content(prompt)
+        return (response.text or "").strip()
+    except Exception:
+        positives = []
+        negatives = []
+        for r in sample:
+            txt = (r.get("comment") or r.get("comentario") or "").lower()
+            if any(k in txt for k in ["bueno", "excelente", "positivo", "recomendado", "cumple"]):
+                positives.append(txt)
+            if any(k in txt for k in ["malo", "defecto", "fallo", "problema", "no funciona", "devuelve"]):
+                negatives.append(txt)
+        neg_phrase = "quejas recurrentes" if negatives else "sin patrón claro de quejas"
+        pos_phrase = "algunos aspectos positivos" if positives else "pocos aspectos positivos"
+        return f"{product_name}: {neg_phrase} y {pos_phrase}."
