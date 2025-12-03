@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+*.egg
+
+# Django
+db.sqlite3
+/static/
+media/
+
+# Entorno
+.env
+.env.*
+*.env
+!.env.example
+venv/
+.venv/
+**/venv/
+**/.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Credenciales y llaves
+**/serviceAccountKey*.json
+*.pem
+*.key
