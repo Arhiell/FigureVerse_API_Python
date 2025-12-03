@@ -12,7 +12,7 @@ class GeminiError(Exception):
 genai.configure(api_key=settings.GEMINI_API_KEY)
 
 # Podés cambiar el modelo si querés
-_MODEL_NAME = "gemini-1.5-flash"
+_MODEL_NAME = "gemini-2.5-flash-lite"
 
 
 def summarize_low_rating_reviews(
@@ -80,8 +80,15 @@ TAREA:
     try:
         model = genai.GenerativeModel(_MODEL_NAME)
         response = model.generate_content(prompt)
-        # En la mayoría de los casos, la respuesta de texto está en response.text
         summary = response.text
         return summary.strip()
     except Exception as exc:
+        msg = str(exc)
+        if "not found" in msg or "not supported" in msg or "404" in msg:
+            try:
+                fallback_model = genai.GenerativeModel("gemini-2.5-pro-lite")
+                response = fallback_model.generate_content(prompt)
+                return response.text.strip()
+            except Exception as exc2:
+                raise GeminiError(f"Error al generar resumen con Gemini (fallback): {exc2}")
         raise GeminiError(f"Error al generar resumen con Gemini: {exc}")

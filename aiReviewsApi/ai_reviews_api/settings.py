@@ -35,7 +35,7 @@ if os.path.exists(FIREBASE_CREDENTIALS):
 else:
     FIRESTORE_DB = None
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -45,6 +45,15 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-change-me')
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if os.environ.get('DJANGO_ALLOWED_HOSTS') else []
+
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3101',
+    'http://127.0.0.1:3101',
+]
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:3101',
+    'http://127.0.0.1:3101',
+]
 
 #Configurar la URL base de las Cloud Functions
 CLOUD_FUNCTIONS_EMULATOR_BASE_URL = os.environ.get(
@@ -76,6 +85,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
       # Apps de terceros
     'rest_framework',
+    'corsheaders',
     # Nuestra app
     'feedback',
 ]
@@ -83,6 +93,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
