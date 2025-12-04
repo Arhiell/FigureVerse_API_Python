@@ -106,6 +106,7 @@ def analyze_products_with_low_ratings(rating_threshold: int) -> Dict[str, Any]:
             "total_reviews": total_reviews,
             "low_rating_reviews_count": len(low_rating_reviews),
             "summary": summary,
+            "general_opinion": summary,
         }
 
         save_product_analysis(product_id, analysis_data)

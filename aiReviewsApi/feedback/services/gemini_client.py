@@ -131,7 +131,7 @@ def summarize_general_opinion(product: Dict[str, Any], reviews: List[Dict[str, A
         "equilibrando aspectos positivos y negativos, sin enumerar reseñas ni citar textualmente.\n\n"
         f"ID: {product_id}\nNombre: {product_name}\nDescripción: {product_desc}\n\n"
         f"Muestra de reseñas:\n{reviews_text}\n\n"
-        "Una única oración concisa (≤ 25 palabras)."
+        "Una única oración concisa"
     )
 
     if not _API_KEY:

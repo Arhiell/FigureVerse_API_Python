@@ -16,6 +16,7 @@ from .services.firebase_client import (
     save_product_comments,
     query_product_analyses,
     query_product_comments,
+    backfill_general_opinion,
 )
 from .services.cloud_functions_client import get_reviews_by_product
 
@@ -120,9 +121,10 @@ def sync_product_comments(request, product_id: int):
 @api_view(["GET"])
 def product_opinion_summary(request, product_id: int):
     data = get_product_analysis(product_id)
-    if not data or not data.get("general_opinion"):
+    opinion = (data or {}).get("general_opinion") or (data or {}).get("summary")
+    if not opinion:
         return Response({"detail": "No hay opinión general guardada para este producto."}, status=status.HTTP_404_NOT_FOUND)
-    return Response({"product_id": product_id, "product_name": data.get("product_name"), "general_opinion": data.get("general_opinion")}, status=status.HTTP_200_OK)
+    return Response({"product_id": product_id, "product_name": (data or {}).get("product_name"), "general_opinion": opinion}, status=status.HTTP_200_OK)
 
 
 @api_view(["POST"])
@@ -132,3 +134,10 @@ def sync_product_opinions(request):
     except AnalysisError as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
     return Response(result, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+def backfill_opinion_field(request):
+    default = str(request.data.get("default", "")) if hasattr(request, "data") else ""
+    updated = backfill_general_opinion(default)
+    return Response({"updated": updated}, status=status.HTTP_200_OK)

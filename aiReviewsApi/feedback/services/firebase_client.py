@@ -54,18 +54,18 @@ def get_product_analysis(product_id):
     Obtiene el análisis de un producto desde Firestore.
     Devuelve un diccionario o None si no existe.
     """
+    print(f"Buscando análisis para el producto ID: {product_id}")  # Agrega esta línea
     col = _get_collection()
     if col is None:
-        # Entorno sin Firebase: comportarnos como si no existiera análisis
         return None
     doc_ref = col.document(str(product_id))
     doc = doc_ref.get()
 
     if not doc.exists:
+        print(f"Documento no encontrado para el ID: {product_id}")  # Agrega esta línea
         return None
 
     data = doc.to_dict()
-    # Nos aseguramos de incluir el ID del documento
     data["product_id"] = product_id
     return data
 
@@ -87,6 +87,27 @@ def list_product_analyses():
             return datetime.min
     results.sort(key=lambda x: _parse(x.get("last_analyzed_at")), reverse=True)
     return results
+
+def backfill_general_opinion(default_value: str = "") -> int:
+    col = _get_collection()
+    if col is None:
+        return 0
+    updated = 0
+    for doc in col.stream():
+        data = doc.to_dict() or {}
+        if "general_opinion" in data and str(data.get("general_opinion") or "").strip():
+            continue
+        value = str(data.get("summary") or default_value)
+        value = value.strip()
+        try:
+            col.document(doc.id).set({
+                "general_opinion": value,
+                "last_analyzed_at": datetime.utcnow().isoformat() + "Z",
+            }, merge=True)
+            updated += 1
+        except Exception:
+            continue
+    return updated
     
 def query_product_analyses(
     product_name_contains: Optional[str] = None,

@@ -72,4 +72,9 @@ urlpatterns = [
         views_analysis.sync_product_opinions,
         name="product-opinions-sync",
     ),
+    path(
+        "opiniones/backfill/",
+        views_analysis.backfill_opinion_field,
+        name="product-opinions-backfill",
+    ),
 ]
